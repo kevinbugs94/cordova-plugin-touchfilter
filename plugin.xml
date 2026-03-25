@@ -1,0 +1,9 @@
+<plugin id="cordova-plugin-touchfilter" version="1.0.0" xmlns="http://apache.org/cordova/ns/plugins/1.0">
+  <name>TouchFilter</name>
+  <js-module src="www/TouchFilter.js" name="TouchFilter">
+    <clobbers target="TouchFilter" />
+  </js-module>
+  <platform name="android">
+    <source-file src="src/android/TouchFilter.java" target-dir="src/com/example/touchfilter" />
+  </platform>
+</plugin>
