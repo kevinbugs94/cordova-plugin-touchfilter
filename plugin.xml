@@ -1,9 +1,21 @@
-<plugin id="cordova-plugin-touchfilter" version="1.0.0" xmlns="http://apache.org/cordova/ns/plugins/1.0">
-  <name>TouchFilter</name>
-  <js-module src="www/TouchFilter.js" name="TouchFilter">
-    <clobbers target="TouchFilter" />
-  </js-module>
-  <platform name="android">
-    <source-file src="src/android/TouchFilter.java" target-dir="src/com/example/touchfilter" />
-  </platform>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-touchfilter" version="1.0.2">
+<name>TouchFilter</name>
+<description>Plugin para evitar tapjacking en Android</description>
+<author>Kevin Quispe</author>
+<license>MIT</license>
+<keywords>cordova, android, security, touchfilter, tapjacking</keywords>
+<engines>
+<engine name="cordova-android" version=">=10.0.0"/>
+</engines>
+<js-module src="www/TouchFilter.js" name="TouchFilter">
+<clobbers target="cordova.plugins.TouchFilter"/>
+</js-module>
+<platform name="android">
+<config-file target="res/xml/config.xml" parent="/*">
+<feature name="TouchFilter">
+<param name="android-package" value="com.example.touchfilter.TouchFilter"/>
+</feature>
+</config-file>
+<source-file src="src/android/TouchFilter.java" target-dir="src/com/example/touchfilter"/>
+</platform>
 </plugin>
