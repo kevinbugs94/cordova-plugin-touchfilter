@@ -1,0 +1,11 @@
+{
+  "name": "cordova-plugin-touchfilter",
+  "version": "1.0.0",
+  "description": "Plugin para aplicar setFilterTouchesWhenObscured en Android",
+  "keywords": ["cordova", "plugin", "touchfilter"],
+  "license": "MIT",
+  "cordova": {
+    "id": "cordova-plugin-touchfilter",
+    "platforms": ["android"]
+  }
+}
