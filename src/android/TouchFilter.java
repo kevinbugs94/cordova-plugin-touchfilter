@@ -1,48 +1,63 @@
 package com.example.touchfilter;
+
 import org.apache.cordova.*;
 import org.json.JSONArray;
 import org.json.JSONException;
+
 import android.view.View;
-import android.view.ViewGroup;
+import android.view.MotionEvent;
+import android.view.WindowManager;
 import android.app.Activity;
-import android.provider.Settings;
-import android.content.Context;
-import android.os.Build;
+
 public class TouchFilter extends CordovaPlugin {
-   @Override
-   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-       Activity activity = this.cordova.getActivity();
-       if (activity == null) {
-           callbackContext.error("Activity is null");
-           return false;
-       }
-       if ("enableFilter".equals(action)) {
-           View rootView = activity.getWindow().getDecorView();
-           applyFilterRecursively(rootView);
-           callbackContext.success("Filter enabled");
-           return true;
-       }
-       if ("isOverlayEnabled".equals(action)) {
-           boolean result = isOverlayPermissionEnabled(activity);
-           callbackContext.success(result ? 1 : 0);
-           return true;
-       }
-       return false;
-   }
-   private void applyFilterRecursively(View view) {
-       if (view == null) return;
-       view.setFilterTouchesWhenObscured(true);
-       if (view instanceof ViewGroup) {
-           ViewGroup group = (ViewGroup) view;
-           for (int i = 0; i < group.getChildCount(); i++) {
-               applyFilterRecursively(group.getChildAt(i));
-           }
-       }
-   }
-   private boolean isOverlayPermissionEnabled(Context context) {
-       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-           return Settings.canDrawOverlays(context);
-       }
-       return false;
-   }
+
+    @Override
+public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
+
+    if (action.equals("enable")) {
+
+        cordova.getActivity().runOnUiThread(() -> {
+            try {
+
+                View decorView = cordova.getActivity().getWindow().getDecorView();
+                View rootView = decorView.getRootView();
+                View webView = (View) this.webView.getView();
+
+                // Protección
+                webView.setFilterTouchesWhenObscured(true);
+                decorView.setFilterTouchesWhenObscured(true);
+                rootView.setFilterTouchesWhenObscured(true);
+
+                decorView.setOnTouchListener((v, event) -> {
+
+                    if ((event.getFlags() & MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0 ||
+                        (event.getFlags() & MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0) {
+
+                        // Opcional: log o callback
+                        return true; // BLOQUEA
+                    }
+
+                    return false; // deja pasar
+                });
+
+                callbackContext.success("Protection enabled");
+
+            } catch (Exception e) {
+                callbackContext.error("Error: " + e.getMessage());
+            }
+        });
+
+        return true;
+    }
+
+    return false;
+}
+
+    private boolean isSuspiciousInteraction() {
+        return true;
+    }
+
+    private boolean isCriticalZone(float x, float y) {
+        return (x > 300 && x < 800 && y > 1200 && y < 1600);
+    }
 }
