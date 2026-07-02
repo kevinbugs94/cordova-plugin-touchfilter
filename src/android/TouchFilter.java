@@ -1,63 +1,148 @@
 package com.example.touchfilter;
 
-import org.apache.cordova.*;
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import android.view.View;
+import android.util.Log;
 import android.view.MotionEvent;
-import android.view.WindowManager;
-import android.app.Activity;
+import android.view.View;
+
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
+import org.json.JSONArray;
 
 public class TouchFilter extends CordovaPlugin {
 
-    @Override
-public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
+    private static final String TAG = "TouchFilter";
 
-    if (action.equals("enable")) {
+    private boolean protectionEnabled = false;
+
+    private View.OnTouchListener securityTouchListener;
+
+    @Override
+    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
+
+        if (!"enable".equals(action)) {
+            return false;
+        }
 
         cordova.getActivity().runOnUiThread(() -> {
+
             try {
 
                 View decorView = cordova.getActivity().getWindow().getDecorView();
                 View rootView = decorView.getRootView();
                 View webView = (View) this.webView.getView();
 
-                // Protección
-                webView.setFilterTouchesWhenObscured(true);
+                // Evitar registrar nuevamente
+                if (protectionEnabled) {
+                    callbackContext.success("Protection already enabled");
+                    return;
+                }
+
+                //------------------------------------------
+                // Protección nativa Android
+                //------------------------------------------
+
                 decorView.setFilterTouchesWhenObscured(true);
                 rootView.setFilterTouchesWhenObscured(true);
+                webView.setFilterTouchesWhenObscured(true);
 
-                decorView.setOnTouchListener((v, event) -> {
+                //------------------------------------------
+                // Listener de seguridad
+                //------------------------------------------
 
-                    if ((event.getFlags() & MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0 ||
-                        (event.getFlags() & MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0) {
+                securityTouchListener = (v, event) -> {
 
-                        // Opcional: log o callback
-                        return true; // BLOQUEA
+                    if (isOverlayDetected(event)) {
+
+                        Log.w(TAG,
+                                "Touch blocked. Flags=" + event.getFlags()
+                                        + " Action=" + event.getAction());
+
+                        // En futuras versiones aquí se puede enviar
+                        // un callback hacia JavaScript.
+
+                        return true;
                     }
 
-                    return false; // deja pasar
-                });
+                    return false;
+                };
+
+                decorView.setOnTouchListener(securityTouchListener);
+
+                protectionEnabled = true;
+
+                Log.i(TAG, "Touch protection enabled");
 
                 callbackContext.success("Protection enabled");
 
             } catch (Exception e) {
-                callbackContext.error("Error: " + e.getMessage());
+
+                Log.e(TAG, "Error enabling protection", e);
+
+                callbackContext.error(e.getMessage());
+
             }
+
         });
 
         return true;
     }
 
-    return false;
-}
+    /**
+     * Detecta overlays completos y parciales.
+     */
+    private boolean isOverlayDetected(MotionEvent event) {
 
-    private boolean isSuspiciousInteraction() {
-        return true;
+        int flags = event.getFlags();
+
+        if ((flags & MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0) {
+
+            Log.w(TAG, "FLAG_WINDOW_IS_OBSCURED detected");
+
+            return true;
+        }
+
+        if ((flags & MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0) {
+
+            Log.w(TAG, "FLAG_WINDOW_IS_PARTIALLY_OBSCURED detected");
+
+            return true;
+        }
+
+        return false;
     }
 
-    private boolean isCriticalZone(float x, float y) {
-        return (x > 300 && x < 800 && y > 1200 && y < 1600);
+    @Override
+    public void onResume(boolean multitasking) {
+
+        super.onResume(multitasking);
+
+        if (protectionEnabled) {
+            Log.i(TAG, "Application resumed with TouchFilter enabled");
+        }
+
     }
+
+    @Override
+    public void onPause(boolean multitasking) {
+
+        super.onPause(multitasking);
+
+        if (protectionEnabled) {
+            Log.i(TAG, "Application paused");
+        }
+
+    }
+
+    @Override
+    public void onDestroy() {
+
+        protectionEnabled = false;
+        securityTouchListener = null;
+
+        Log.i(TAG, "TouchFilter destroyed");
+
+        super.onDestroy();
+
+    }
+
 }
