@@ -3,6 +3,7 @@ package com.example.touchfilter;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -27,23 +28,20 @@ public class TouchFilter extends CordovaPlugin {
 
             try {
 
-                View decorView = cordova.getActivity().getWindow().getDecorView();
-                View rootView = decorView.getRootView();
-                View webView = (View) this.webView.getView();
-
-                // Evitar registrar nuevamente
                 if (protectionEnabled) {
                     callbackContext.success("Protection already enabled");
                     return;
                 }
 
+                View decorView = cordova.getActivity().getWindow().getDecorView();
+
                 //------------------------------------------
-                // Protección nativa Android
+                // Aplicar protección a todas las Views
                 //------------------------------------------
 
-                decorView.setFilterTouchesWhenObscured(true);
-                rootView.setFilterTouchesWhenObscured(true);
-                webView.setFilterTouchesWhenObscured(true);
+                int protectedViews = applyTouchFilter(decorView);
+
+                Log.i(TAG, "Protected Views: " + protectedViews);
 
                 //------------------------------------------
                 // Listener de seguridad
@@ -54,11 +52,10 @@ public class TouchFilter extends CordovaPlugin {
                     if (isOverlayDetected(event)) {
 
                         Log.w(TAG,
-                                "Touch blocked. Flags=" + event.getFlags()
-                                        + " Action=" + event.getAction());
-
-                        // En futuras versiones aquí se puede enviar
-                        // un callback hacia JavaScript.
+                                "Touch blocked. Flags="
+                                        + event.getFlags()
+                                        + " Action="
+                                        + event.getAction());
 
                         return true;
                     }
@@ -85,6 +82,35 @@ public class TouchFilter extends CordovaPlugin {
         });
 
         return true;
+    }
+
+    /**
+     * Recorre todo el árbol de Views aplicando
+     * setFilterTouchesWhenObscured(true)
+     */
+    private int applyTouchFilter(View view) {
+
+        if (view == null) {
+            return 0;
+        }
+
+        view.setFilterTouchesWhenObscured(true);
+
+        int count = 1;
+
+        if (view instanceof ViewGroup) {
+
+            ViewGroup group = (ViewGroup) view;
+
+            for (int i = 0; i < group.getChildCount(); i++) {
+
+                count += applyTouchFilter(group.getChildAt(i));
+
+            }
+
+        }
+
+        return count;
     }
 
     /**
@@ -116,9 +142,29 @@ public class TouchFilter extends CordovaPlugin {
 
         super.onResume(multitasking);
 
-        if (protectionEnabled) {
-            Log.i(TAG, "Application resumed with TouchFilter enabled");
+        if (!protectionEnabled) {
+            return;
         }
+
+        cordova.getActivity().runOnUiThread(() -> {
+
+            try {
+
+                View decorView = cordova.getActivity().getWindow().getDecorView();
+
+                int protectedViews = applyTouchFilter(decorView);
+
+                Log.i(TAG,
+                        "Touch protection reapplied. Protected Views: "
+                                + protectedViews);
+
+            } catch (Exception e) {
+
+                Log.e(TAG, "Failed to reapply TouchFilter", e);
+
+            }
+
+        });
 
     }
 
